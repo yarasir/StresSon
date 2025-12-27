@@ -11,10 +11,29 @@ Android uygulaması ile yüz ifadelerinden stres seviyesi tespiti yapan uygulama
 
 ## Teknik Detaylar
 
+### Happiness Boost Özelliği
+
+- **Karekök Yöntemi**: Modelin düşük tahmin ettiği mutluluk değerlerini artırır
+  - Örnek: %4 mutluluk → %20'ye yükselir
+  - Örnek: %1 mutluluk → %10'a yükselir
+- **Stres Formülü**: Boost edilmiş happiness, stres formülünde 0.6 katsayısı ile kullanılır
+- **Her İki Modda Aktif**: Hem kamera hem video analizinde çalışır
+
 ### Anger Boost Özelliği
 
-- **Kamera Analizi**: Anger boost aktif - Neutral'dan Anger'a olasılık transferi yapılır (daha hassas anger tespiti)
-- **Video Analizi**: Anger boost devre dışı - Ham model çıktıları kullanılır (daha objektif analiz)
+- **Neutral Redistribution**: Model bazen Anger'ı Neutral olarak sınıflandırır, bu sorunu çözmek için:
+  - Anger > %5 ve Neutral > %8 ise → Neutral'ın %45'i Anger'a transfer edilir
+  - **Her İki Modda Aktif**: Hem kamera hem video analizinde çalışır
+
+- **Akıllı Kontroller**:
+  - **Happiness Kontrolü**: Happiness > %10 ise anger boost devre dışı (gülerken anger yükselmesin)
+  - **Yüksek Anger Kontrolü**: Anger > %25 ise boost yapılmaz (zaten yeterince yüksek)
+
+### Stres Seviyesi Eşikleri
+
+- **HIGH Stres**: Skor > 0.43
+- **MEDIUM Stres**: Skor 0.17 - 0.43 arası
+- **LOW Stres**: Skor < 0.17
 
 ### Model
 
