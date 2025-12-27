@@ -9,7 +9,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.stressdetection"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 34
 
         ndk {
@@ -41,11 +41,16 @@ android {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.4"
+        kotlinCompilerExtensionVersion = "1.5.8"
     }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/DEPENDENCIES"
+            excludes += "/META-INF/LICENSE"
+            excludes += "/META-INF/LICENSE.txt"
+            excludes += "/META-INF/NOTICE"
+            excludes += "/META-INF/NOTICE.txt"
         }
     }
 }
@@ -72,7 +77,7 @@ dependencies {
     // TensorFlow Lite (temel)
     implementation(libs.tensorflow.lite)
     // Flex Ops (Select TF Ops) - final_stress_model_flex için gerekli
-    implementation("org.tensorflow:tensorflow-lite-select-tf-ops:2.14.0")
+    implementation("org.tensorflow:tensorflow-lite-select-tf-ops:2.16.1")
 
     // ML Kit Face Detection
     implementation("com.google.android.gms:play-services-mlkit-face-detection:17.1.0")
