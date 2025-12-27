@@ -125,7 +125,7 @@ fun VideoAnalysisScreen(videoUri: Uri, onBack: () -> Unit) {
                                             normalizedBox.width().coerceAtMost(bitmap.width - normalizedBox.left),
                                             normalizedBox.height().coerceAtMost(bitmap.height - normalizedBox.top)
                                         )
-                                        val inference = analyzer.runInference(faceBitmap)
+                                        val inference = analyzer.runInference(faceBitmap, enableAngerBoost = false)
                                         results.add(
                                             VideoFaceResult(
                                                 normalizedBox, // Normalize edilmiş bounding box

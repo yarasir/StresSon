@@ -201,7 +201,7 @@ class StressImageAnalyzer(
             }
     }
 
-    fun runInference(bitmap: Bitmap): Pair<StressLevel, String> {
+    fun runInference(bitmap: Bitmap, enableAngerBoost: Boolean = true): Pair<StressLevel, String> {
         if (interpreter == null || inputBuffer == null) {
             android.util.Log.e("StressAnalyzer", "❌ Interpreter veya inputBuffer null!")
             return Pair(StressLevel.LOW, "Model yüklenemedi")
@@ -306,28 +306,33 @@ class StressImageAnalyzer(
             // ✅ Neutral redistribution: Sadece Anger için (Sadness redistribution kaldırıldı)
             // Model bazen Anger'ı Neutral olarak sınıflandırıyor, bu yüzden "düzeltiyoruz"
             // Anger > 5% ise ve Neutral > 8% ise → Neutral'dan Anger'a transfer
-            val angerThreshold = 0.05f   // Anger > 5% ise Neutral'dan al (daha agresif)
-            val neutralThreshold = 0.08f  // Neutral > 8% olmalı (10%'dan düşürüldü - daha kolay tetiklenir)
-            val transferRatio = 0.45f     // Neutral'ın %45'ini transfer et (daha fazla transfer)
-            
-            if (pAnger > angerThreshold && pNeutral > neutralThreshold) {
-                // Anger yüksek ve Neutral da yeterliyse → Neutral'dan Anger'a transfer
-                val transfer = pNeutral * transferRatio
-                val oldAnger = pAnger
-                val oldNeutral = pNeutral
-                pAnger += transfer
-                pNeutral -= transfer
-                android.util.Log.d("StressAnalyzer", "🔄 Neutral → Anger: ${String.format("%.2f", transfer*100)}% " +
-                        "(Anger: ${String.format("%.1f", oldAnger*100)}% → ${String.format("%.1f", pAnger*100)}%, " +
-                        "Neutral: ${String.format("%.1f", oldNeutral*100)}% → ${String.format("%.1f", pNeutral*100)}%)")
+            // ⚠️ SADECE KAMERA İÇİN: Video analizinde anger boost devre dışı
+            if (enableAngerBoost) {
+                val angerThreshold = 0.05f   // Anger > 5% ise Neutral'dan al (daha agresif)
+                val neutralThreshold = 0.08f  // Neutral > 8% olmalı (10%'dan düşürüldü - daha kolay tetiklenir)
+                val transferRatio = 0.45f     // Neutral'ın %45'ini transfer et (daha fazla transfer)
+                
+                if (pAnger > angerThreshold && pNeutral > neutralThreshold) {
+                    // Anger yüksek ve Neutral da yeterliyse → Neutral'dan Anger'a transfer
+                    val transfer = pNeutral * transferRatio
+                    val oldAnger = pAnger
+                    val oldNeutral = pNeutral
+                    pAnger += transfer
+                    pNeutral -= transfer
+                    android.util.Log.d("StressAnalyzer", "🔄 Neutral → Anger: ${String.format("%.2f", transfer*100)}% " +
+                            "(Anger: ${String.format("%.1f", oldAnger*100)}% → ${String.format("%.1f", pAnger*100)}%, " +
+                            "Neutral: ${String.format("%.1f", oldNeutral*100)}% → ${String.format("%.1f", pNeutral*100)}%)")
+                } else {
+                    // Debug: Neden redistribution yapılmadı?
+                    if (pAnger <= angerThreshold) {
+                        android.util.Log.d("StressAnalyzer", "⏭️ Redistribution atlandı: Anger=${String.format("%.1f", pAnger*100)}% <= ${angerThreshold*100}%")
+                    }
+                    if (pNeutral <= neutralThreshold) {
+                        android.util.Log.d("StressAnalyzer", "⏭️ Redistribution atlandı: Neutral=${String.format("%.1f", pNeutral*100)}% <= ${neutralThreshold*100}%")
+                    }
+                }
             } else {
-                // Debug: Neden redistribution yapılmadı?
-                if (pAnger <= angerThreshold) {
-                    android.util.Log.d("StressAnalyzer", "⏭️ Redistribution atlandı: Anger=${String.format("%.1f", pAnger*100)}% <= ${angerThreshold*100}%")
-                }
-                if (pNeutral <= neutralThreshold) {
-                    android.util.Log.d("StressAnalyzer", "⏭️ Redistribution atlandı: Neutral=${String.format("%.1f", pNeutral*100)}% <= ${neutralThreshold*100}%")
-                }
+                android.util.Log.d("StressAnalyzer", "⏭️ Anger boost devre dışı (video analizi)")
             }
 
             // ✅ DEBUG: Tüm emotion olasılıklarını logla (TEK SATIRDA - TÜM 7 DUYGU)
