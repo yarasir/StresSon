@@ -306,14 +306,22 @@ class StressImageAnalyzer(
             // ✅ Neutral redistribution: Sadece Anger için (Sadness redistribution kaldırıldı)
             // Model bazen Anger'ı Neutral olarak sınıflandırıyor, bu yüzden "düzeltiyoruz"
             // Anger > 5% ise ve Neutral > 8% ise → Neutral'dan Anger'a transfer
-            // ⚠️ SADECE KAMERA İÇİN: Video analizinde anger boost devre dışı
+            // ⚠️ Happiness yüksekse veya Anger zaten yüksekse anger boost devre dışı
+            // ✅ Hem kamera hem video analizinde aktif
             if (enableAngerBoost) {
-                val angerThreshold = 0.05f   // Anger > 5% ise Neutral'dan al (daha agresif)
+                val angerThreshold = 0.05f   // Anger > 5% ise Neutral'dan al (minimum eşik)
+                val angerMaxThreshold = 0.25f  // Anger > 25% ise boost yapma (zaten yeterince yüksek)
                 val neutralThreshold = 0.08f  // Neutral > 8% olmalı (10%'dan düşürüldü - daha kolay tetiklenir)
+                val happinessBlockThreshold = 0.10f  // Happiness > 10% ise anger boost devre dışı
                 val transferRatio = 0.45f     // Neutral'ın %45'ini transfer et (daha fazla transfer)
                 
-                if (pAnger > angerThreshold && pNeutral > neutralThreshold) {
-                    // Anger yüksek ve Neutral da yeterliyse → Neutral'dan Anger'a transfer
+                // ✅ Kontroller: Happiness yüksekse veya Anger zaten yüksekse boost yapma
+                if (pHappiness > happinessBlockThreshold) {
+                    android.util.Log.d("StressAnalyzer", "⏭️ Anger boost engellendi: Happiness=${String.format("%.1f", pHappiness*100)}% > ${happinessBlockThreshold*100}% (gülerken anger yükselmesin)")
+                } else if (pAnger > angerMaxThreshold) {
+                    android.util.Log.d("StressAnalyzer", "⏭️ Anger boost engellendi: Anger=${String.format("%.1f", pAnger*100)}% > ${angerMaxThreshold*100}% (zaten yeterince yüksek, daha fazla artırmaya gerek yok)")
+                } else if (pAnger > angerThreshold && pNeutral > neutralThreshold) {
+                    // Anger düşük-orta seviyede ve Neutral da yeterliyse → Neutral'dan Anger'a transfer
                     val transfer = pNeutral * transferRatio
                     val oldAnger = pAnger
                     val oldNeutral = pNeutral
@@ -331,8 +339,6 @@ class StressImageAnalyzer(
                         android.util.Log.d("StressAnalyzer", "⏭️ Redistribution atlandı: Neutral=${String.format("%.1f", pNeutral*100)}% <= ${neutralThreshold*100}%")
                     }
                 }
-            } else {
-                android.util.Log.d("StressAnalyzer", "⏭️ Anger boost devre dışı (video analizi)")
             }
 
             // ✅ DEBUG: Tüm emotion olasılıklarını logla (TEK SATIRDA - TÜM 7 DUYGU)
@@ -370,11 +376,10 @@ class StressImageAnalyzer(
             val negativeLoad = (pFear * 2.0f) + (pAnger * 1.5f) + (pDisgust * 0.8f) + (pSadness * 0.3f) + (pSurprise * 0.2f)
             
             // 4. Rahatlama Yükü (Positive Load)
-            // DİKKAT: adjHappiness'i suni olarak artırdığımız için, buradaki katsayısını 
-            // 1.0'dan 0.5'e düşürdük. Böylece stres skoru "gereğinden fazla" düşmeyecek.
+            // ✅ Katsayı 0.5'ten 0.6'ya çıkarıldı (daha etkili stres düşürme)
             // Surprise artık pozitif yükten çıkarıldı (stresi artırsın diye)
             // ✅ Neutral katsayısı 0.4'ten 0.15'e düşürüldü (Neutral patlaması yapıyordu, Anger/Fear maskeliyordu)
-            val positiveLoad = (adjHappiness * 0.5f) + (pNeutral * 0.15f)
+            val positiveLoad = (adjHappiness * 0.6f) + (pNeutral * 0.15f)
             
             // Net Skor
             var rawScore = negativeLoad - positiveLoad
@@ -386,14 +391,14 @@ class StressImageAnalyzer(
             // ✅ DEBUG: Stres skoru detayı
             android.util.Log.d("StressAnalyzer", "🔍 Stres skoru detayı (v10 - Neutral redistribution eklendi):")
             android.util.Log.d("StressAnalyzer", "   🔴 Neg: ${String.format("%.3f", negativeLoad)} (Fear×2.0 + Anger×1.5 + Disgust×0.8 + Sadness×0.3 + Surprise×0.2)")
-            android.util.Log.d("StressAnalyzer", "   🟢 Poz: ${String.format("%.3f", positiveLoad)} (Happiness×0.5 + Neutral×0.15)")
+            android.util.Log.d("StressAnalyzer", "   🟢 Poz: ${String.format("%.3f", positiveLoad)} (Happiness×0.6 + Neutral×0.15)")
             android.util.Log.d("StressAnalyzer", "   🧮 Net Skor: ${String.format("%.3f", rawScore)}")
 
-            // 5. Eşik Değerleri (Hafifçe ayarlandı - HIGH eşiği 0.45'ten 0.38'e düşürüldü)
-            // Böylece 0.38-0.45 arası skorlar da HIGH olarak işaretlenir
+            // 5. Eşik Değerleri (MEDIUM aralığı genişletildi - LOW ve HIGH'tan alındı)
+            // HIGH: 0.45 -> 0.43, MEDIUM: 0.20 -> 0.17 (MEDIUM daha geniş: 0.17-0.43)
             val stressLevel = when {
-                rawScore > 0.38f -> StressLevel.HIGH  // Önceki: 0.45f
-                rawScore > 0.15f -> StressLevel.MEDIUM
+                rawScore > 0.43f -> StressLevel.HIGH  // Önceki: 0.45f (MEDIUM'a 2 puan verildi)
+                rawScore > 0.17f -> StressLevel.MEDIUM  // Önceki: 0.20f (LOW'tan 3 puan alındı)
                 else -> StressLevel.LOW
             }
             
